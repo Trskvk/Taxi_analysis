@@ -1,0 +1,8 @@
+.idea/
+venv/
+.DS_Store
+report/*.crc
+report/_SUCCESS
+report/.part*
+main.py
+sample.csv
