@@ -4,5 +4,3 @@ venv/
 report/*.crc
 report/_SUCCESS
 report/.part*
-main.py
-sample.csv

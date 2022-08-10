@@ -1,0 +1,9 @@
+{"Vendor":"VeriFone Inc.","PaymentType":"Credit card","PaymentRate":17.081299970385526,"MaxPaymentRate":17.081299970385526}
+{"Vendor":"VeriFone Inc.","PaymentType":"Cash","PaymentRate":9.831080901579526,"NextPaymentRate":17.081299970385526,"MaxPaymentRate":17.081299970385526,"%ToNextRate":"73.74793414263462%"}
+{"Vendor":"VeriFone Inc.","PaymentType":"No charge","PaymentRate":-5.786298701298689,"NextPaymentRate":9.831080901579526,"MaxPaymentRate":17.081299970385526,"%ToNextRate":"-269.9027549229876%"}
+{"Vendor":"VeriFone Inc.","PaymentType":"Dispute","PaymentRate":-6.911538461538461,"NextPaymentRate":-5.786298701298689,"MaxPaymentRate":17.081299970385526,"%ToNextRate":"-16.28059753268451%"}
+{"Vendor":"Creative Mobile Technologies, LLC","PaymentType":"Unknown","PaymentRate":39.55,"MaxPaymentRate":39.55}
+{"Vendor":"Creative Mobile Technologies, LLC","PaymentType":"Credit card","PaymentRate":17.573221896383526,"NextPaymentRate":39.55,"MaxPaymentRate":39.55,"%ToNextRate":"125.0583315523898%"}
+{"Vendor":"Creative Mobile Technologies, LLC","PaymentType":"Cash","PaymentRate":10.639043993231528,"NextPaymentRate":17.573221896383526,"MaxPaymentRate":39.55,"%ToNextRate":"65.17670109798837%"}
+{"Vendor":"Creative Mobile Technologies, LLC","PaymentType":"No charge","PaymentRate":8.885678391959779,"NextPaymentRate":10.639043993231528,"MaxPaymentRate":39.55,"%ToNextRate":"19.732490012898566%"}
+{"Vendor":"Creative Mobile Technologies, LLC","PaymentType":"Dispute","PaymentRate":8.238000000000001,"NextPaymentRate":8.885678391959779,"MaxPaymentRate":39.55,"%ToNextRate":"7.86208293226241%"}

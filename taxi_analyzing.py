@@ -1,7 +1,7 @@
 import pyspark
-from pyspark.sql import SparkSession, Window
+from pyspark.sql import SparkSession, DataFrame, Window
 from pyspark.sql import functions as F
-from pyspark.sql.functions import col, lit, concat, desc, first
+from pyspark.sql.functions import col, lit, concat, first
 from itertools import chain
 
 VendorMapping = {
@@ -18,44 +18,75 @@ PaymentTypeMapping = {
     '6': 'Voided trip'
 }
 
-spark = SparkSession.builder.appName("Avenga test").getOrCreate()
-df = spark.read.format("csv").option("header", "true").load("taxi_tripdata.csv")
 
-report = (
+def read_csv(spark_template: SparkSession, path) -> DataFrame:
+    return spark_template.read.format("csv").option("header", "true").load(path)
 
-)
-# ID to name
-df = df.withColumn("Vendor", F.create_map([lit(x) for x in chain(*VendorMapping.items())])[col('VendorID')])
-df = df.withColumn("PaymentType",
-                   F.create_map([lit(x) for x in chain(*PaymentTypeMapping.items())])[col('payment_type')])
 
-# PaymentRate per type and vendor
-group_two = df.groupBy("VendorID", "payment_type") \
-    .agg(
-    F.sum("total_amount").alias("payment_total"),
-    F.sum("passenger_count").alias("passengers_count")
-)
+def save_to_csv(df: DataFrame) -> None:
+    df.write.format("csv").option("header", "true").save("./csv_report", mode="overwrite")
 
-df = df.join(group_two, ["VendorID", "payment_type"])
-df = df.withColumn("PaymentRate", col("payment_total") / col("passengers_count"))
 
-# Next rate
-over_rate = Window.partitionBy("VendorID").orderBy("PaymentRate").rowsBetween(1, Window.unboundedFollowing)
-df = df.withColumn("NextPaymentRate", first("PaymentRate").over(over_rate))
+def save_to_json(dataf: DataFrame) -> None:
+    dataf.write.format("json").option("header", "true").save("./json_report", mode="overwrite")
 
-# Max rate per vendor
-group_vendor = df.groupBy("VendorID") \
-    .agg(F.max("PaymentRate").alias("MaxPaymentRate"))
-df = df.join(group_vendor, ["VendorID"])
 
-# Percents to next rate --- nextpaymentrate / paymentrate
+# Getting starting data, by mapping Id to Names/Types and Calculating and providing payment rate
+def starting_transform(df: DataFrame) -> DataFrame:
+    template = (
+        df
+        .groupBy("VendorID", "payment_type")
+        .agg(
+            F.create_map([lit(x) for x in chain(*VendorMapping.items())])[col('VendorID')].alias("Vendor"),
+            F.create_map([lit(x) for x in chain(*PaymentTypeMapping.items())])[col('payment_type')].alias(
+                "PaymentType"),
+            F.sum("total_amount").alias("payment_total"),
+            F.sum("passenger_count").alias("passengers_count"))
+        .withColumn("PaymentRate", col("payment_total") / col("passengers_count"))
+    )
+    return template.select("Vendor", "PaymentType", "PaymentRate")
 
-grow = (col("NextPaymentRate") / col("PaymentRate"))*100-100
-df = df.withColumn("%ToNextRate", grow)
-df = df.withColumn("%ToNextRate", concat(col("%ToNextRate"), lit('%')).cast("string"))
 
-# output
-df.coalesce(1).select('Vendor', 'PaymentType', 'PaymentRate', 'NextPaymentRate', 'MaxPaymentRate', '%ToNextRate') \
-    .dropDuplicates().na.fill(value=0, subset=["NextPaymentRate"]).filter("PaymentRate != NextPaymentRate") \
-    .write.format("csv").option("header", "true").save("./report", mode="overwrite")
+# Determine next payment rate from current payment type
+def find_next_element(df: DataFrame) -> DataFrame:
+    return df.withColumn("NextPaymentRate", first("PaymentRate").over(
+            Window.partitionBy("Vendor").orderBy("PaymentRate").rowsBetween(1, Window.unboundedFollowing)))
 
+
+# Finding max payment rate for vendor
+def find_max_rate(df: DataFrame) -> DataFrame:
+    max_rate = df.groupBy("Vendor").agg(F.max("PaymentRate").alias("MaxPaymentRate"))
+    return df.join(max_rate, ["Vendor"])
+
+
+# Calculating percents to achieve nex payment rate
+def percents_to_next(df: DataFrame) -> DataFrame:
+    return df.withColumn("%ToNextRate", col("NextPaymentRate") / col("PaymentRate") * 100 - 100) \
+            .withColumn("%ToNextRate", concat(col("%ToNextRate"), lit('%')).cast("string"))
+
+
+def main():
+    spark = SparkSession.builder.appName("Avenga test").getOrCreate()
+    report = read_csv(spark, "./taxi_tripdata.csv")
+
+    report = starting_transform(report)
+    report = find_next_element(report)
+    report = find_max_rate(report)
+    report = percents_to_next(report)
+
+    # report.show()
+    # report.printSchema()
+    save_to_csv(report)
+    save_to_json(report)
+
+
+main()
+
+# Schema:
+# root
+#  |-- Vendor: string (nullable = true)
+#  |-- PaymentType: string (nullable = true)
+#  |-- PaymentRate: double (nullable = true)
+#  |-- NextPaymentRate: double (nullable = true)
+#  |-- MaxPaymentRate: double (nullable = true)
+#  |-- %ToNextRate: string (nullable = true)
